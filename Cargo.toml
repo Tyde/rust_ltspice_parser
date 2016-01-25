@@ -1,0 +1,7 @@
+[package]
+name = "ltspice"
+version = "0.1.0"
+authors = ["Daniel Thiem <info@daniel-thiem.de>"]
+
+[dependencies]
+byteorder = "0.4.2"
