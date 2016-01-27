@@ -5,6 +5,8 @@ use byteorder::{ByteOrder, LittleEndian};
 use std::str::FromStr;
 use std::path::Path;
 use num::complex::Complex;
+use gnuplot::{Figure, Caption, Color,AxesCommon,AutoOption};
+
 
 
 #[derive(Debug)]
@@ -66,7 +68,7 @@ impl SteppedSimulation {
 
 
     pub fn get_values_for_variable_at(&self, step: &Step, var: &SimulationVariable) -> Option<VariableResult> {
-        println!("var: {:?} Variables: {:#?}", var,self.variables);
+
         match self.steps.iter().position(|r| r.eq(step)) {
             Some(position) =>{
                 match self.variables.iter().position(|r| r.eq(var)) {
@@ -101,12 +103,47 @@ impl SteppedSimulation {
         result
     }
 
+    pub fn calculate_fitnesses(&self, var: &SimulationVariable) -> Vec<f64> {
+        let mut fitnesses = Vec::new();
+        for step in &self.steps {
+            let freq = self.get_values_for_variable_at(&step,&self.variables[0]).unwrap();
+            let values = self.get_values_for_variable_at(&step,&var);
+            let fitness = match values {
+                Some(vl) => vl.calculate_fitness(&freq),
+                None => panic!("wooow")
+            };
+            fitnesses.push(fitness);
+        }
+        fitnesses
+    }
+
+
+    pub fn find_with_resonance_at(&self,  var: &SimulationVariable, res_freq: f64) -> Vec<VariableResult> {
+        let freq = self.get_values_for_variable_at(&self.steps[0],&self.variables[0]).unwrap();
+        let freq_index = freq.get_data(&DataType::Real).iter().position(|b| b>&res_freq).unwrap();
+        let fq_barrier_low = freq_index-2;
+        let fq_barrier_high = freq_index+2;
+        let mut result = Vec::new();
+        for step in &self.steps {
+            let values = self.get_values_for_variable_at(&step,&var).unwrap();
+            let peaks =  values.find_peaks(Some(PeakType::Maximum),&DataType::AbsoluteDecibel);
+            for peak in peaks {
+                if peak > fq_barrier_low && peak < fq_barrier_high {
+                    result.push(values.clone());
+                }
+            }
+        }
+        result
+
+    }
+
+
 
 
 }
 
 
-
+/// A Variable Result
 #[derive(Debug,Clone)]
 struct VariableResult<'a> {
     variable: &'a SimulationVariable,
@@ -115,7 +152,7 @@ struct VariableResult<'a> {
 }
 
 impl<'a> VariableResult<'a> {
-    pub fn get_abs(&self) -> Vec<f64> {
+    fn get_abs(&self) -> Vec<f64> {
         let mut result:Vec<f64> = Vec::new();
         for ct in 0..self.reals.len() {
             let comp = Complex::new(self.reals[ct],self.imags[ct]);
@@ -124,7 +161,7 @@ impl<'a> VariableResult<'a> {
         result
     }
 
-    pub fn get_abs_in_dB(&self) -> Vec<f64> {
+    fn get_abs_in_decibel(&self) -> Vec<f64> {
         let mut result:Vec<f64> = Vec::new();
         for ct in 0..self.reals.len() {
             let comp = Complex::new(self.reals[ct],self.imags[ct]);
@@ -133,7 +170,7 @@ impl<'a> VariableResult<'a> {
         result
     }
 
-    pub fn get_bode(&self) -> Vec<(f64,f64)> {
+    fn get_bode(&self) -> Vec<(f64,f64)> {
         let mut result = Vec::new();
         for ct in 0..self.reals.len() {
             let comp = Complex::new(self.reals[ct],self.imags[ct]);
@@ -141,9 +178,148 @@ impl<'a> VariableResult<'a> {
         }
         result
     }
+
+
+    pub fn diff(raw_data: &Vec<f64>) -> Vec<f64> {
+        let mut result = Vec::new();
+        for ct in 0..raw_data.len()-1 {
+            result.push(raw_data[ct+1]-raw_data[ct]);
+        }
+        result
+    }
+    /// Finds peaks in the data
+    /// If you want to find maxima, you call it with Some(PeakType::Maximum)
+    /// If you want to find all peaks, you call it with None
+    pub fn find_peaks(&self,peak_type: Option<PeakType>,data_type:&DataType) -> Vec<usize> {
+        let modifier = match peak_type {
+            Some(PeakType::Maximum) => 1.0,
+            Some(PeakType::Minimum) => -1.0,
+            None => 0.0
+        };
+        let mut df1 = VariableResult::diff(&self.get_data(&data_type));
+        df1.insert(0,1.0);
+        let mut df2 = VariableResult::diff(&VariableResult::diff(&self.get_data(&data_type)));
+        df2.insert(0,1.0);
+        df2.insert(0,1.0);
+        let mut result = Vec::new();
+        // Find positions, where df1 changes sign and where df2 is lower than zero
+        for ct in 0..df1.len()-1 {
+            if df1[ct]*df1[ct+1] < 0.0 && df2[ct] < 0.0 && (df1[ct] * modifier > 0.0 || modifier == 0.0) {
+                //Peak detected
+                result.push(ct);
+            }
+        }
+        result
+    }
+
+    pub fn get_data(&self,data_type:&DataType) -> Vec<f64>{
+        match data_type {
+            &DataType::Real              => self.reals.clone(),
+            &DataType::Imaginary         => self.imags.clone(),
+            &DataType::Absolute          => self.get_abs(),
+            &DataType::AbsoluteDecibel   => self.get_abs_in_decibel(),
+            &DataType::Argument          => unimplemented!()
+        }
+    }
+
+    pub fn min(&self,data_type:&DataType) -> (usize,f64) {
+        let data = self.get_data(data_type);
+        let value = data.iter().fold(1./0. /* -inf */, |a,b| f64::min(a,*b));
+        (data.iter().position(|r| r.eq(&value)).unwrap(),value)
+    }
+
+    pub fn max(&self,data_type:&DataType) -> (usize,f64) {
+        let data = self.get_data(data_type);
+        let value = data.iter().fold(-1./0. /* -inf */, |a,b| f64::max(a,*b)) ;
+        (data.iter().position(|r| r.eq(&value)).unwrap(),value)
+    }
+
+    fn normalize(&self,data_type:&DataType) -> Vec<f64> {
+        let (_loc_max,max) = self.max(data_type);
+        let (_log_min,min) = self.min(data_type);
+        let original = self.get_data(data_type);
+        let mut result = Vec::new();
+        for value in original {
+            result.push((value-min)/(max-min));
+        }
+        result
+    }
+
+    pub fn avg_normalized(&self, data_type:&DataType, frequency: &VariableResult) -> f64 {
+        let original = self.get_data(data_type);
+        let normalized = VariableResult::diff(&frequency.normalize(&DataType::Real));
+        let mut result = 0.0;
+        for ct in 0..original.len()-1 {
+            result += (original[ct+1]+original[ct])/2.0*normalized[ct];
+        }
+        result
+    }
+    /// Returns the next occurence of a value higher/lower than the value at the starting
+    /// point plus/minus the offset in both directions
+    pub fn next_value_around(&self, data_type:&DataType, starting_point:usize, offset:f64, maximum: bool) -> (Option<usize>,Option<usize>) {
+        let modifier = if maximum { -1.0 } else { 1.0 };
+        let data = self.get_data(data_type);
+        let value_at_starting_point =  data[starting_point];
+        let mut ct_left = 0;
+        let mut ct_right = 0;
+        let mut found_left = false;
+        let mut found_right = false;
+        while starting_point-ct_left >= 0 && starting_point+ct_right < data.len() && !found_right && !found_left {
+            if !found_left {
+                let left = data[starting_point-ct_left];
+                if (left - value_at_starting_point) * modifier > offset {
+                    found_left = true;
+                }
+                else {
+                    ct_left += 1;
+                }
+            }
+            if !found_right {
+                let right = data[starting_point+ct_right];
+                if (right - value_at_starting_point) * modifier > offset {
+                    found_right = true;
+                }
+                else {
+                    ct_right += 1;
+                }
+            }
+        }
+        (if found_left {Some (ct_left)} else  {None}, if found_right {Some (ct_right)} else  {None})
+    }
+
+    pub fn calculate_fitness(&self, frequency: &VariableResult) -> f64 {
+        let avg = self.avg_normalized(&DataType::AbsoluteDecibel,&frequency);
+        //println!("{:?}", avg);
+        let (loc_max,max) = self.max(&DataType::AbsoluteDecibel);
+        let (loc_min,min) = self.min(&DataType::AbsoluteDecibel);
+        (avg+100.0)/100.0+1.0/((max-min)/30.0)+ (self.get_data(&DataType::AbsoluteDecibel)[0])/30.0
+    }
+
+    pub fn plot(&self,frequency: &VariableResult,fg:&mut Figure,title:&str,color:&str) {
+        let y = self.get_data(&DataType::AbsoluteDecibel);
+        let x = frequency.get_data(&DataType::Real);
+
+
+        fg.axes2d()
+            .lines(&x,&y,&[Caption(title),Color(color)])
+            .set_x_log(Some(10.0))
+            .set_y_range(AutoOption::Fix(-70.0),AutoOption::Fix(0.0));
+
+    }
+ }
+
+pub enum DataType {
+    Real,
+    Imaginary,
+    Absolute,
+    AbsoluteDecibel,
+    Argument
 }
 
-
+pub enum PeakType {
+    Minimum,
+    Maximum
+}
 
 
 #[derive(Default,Debug,PartialEq)]
@@ -283,24 +459,31 @@ fn get_values<P: AsRef<Path>>(path: P,reals: &mut Vec<Vec<f64>>,imags: &mut Vec<
     //let mut line_ct = 0;
     let mut in_binary = false;
     file.read_to_end(&mut file_buf).unwrap();
+
+    let mut buffer = Vec::new();
     while ct<(file_buf.len()) {
         if !in_binary {
             //Wait for binary
             let k = &[file_buf[ct].clone()];
-            match str::from_utf8(k) {
-                Ok(_) => {},
-                Err(_) => in_binary = true,
-            };
+
+            buffer.push(k[0]);
+            if String::from_utf8(buffer.clone()).unwrap().contains("Binary:\n") {
+                in_binary = true;
+
+            }
+
+
             ct+=1;
         }
         else {
 
 
-            let start = ct-1;
+            let start = ct;
             let end = start + 8;
 
             let real = LittleEndian::read_f64(&file_buf[start..end]);
             let imag = LittleEndian::read_f64(&file_buf[end..end+8]);
+
 
             ct+=16;
             reals[freq_step_counter].push(real);
@@ -312,5 +495,6 @@ fn get_values<P: AsRef<Path>>(path: P,reals: &mut Vec<Vec<f64>>,imags: &mut Vec<
 
 
     }
+
 
 }
