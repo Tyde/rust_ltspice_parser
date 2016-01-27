@@ -1,5 +1,5 @@
 [package]
-name = "ltspice"
+name = "rust_ltspice_parser"
 version = "0.1.0"
 authors = ["Daniel Thiem <info@daniel-thiem.de>"]
 
