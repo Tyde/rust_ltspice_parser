@@ -6,6 +6,10 @@ This can be used to do some calculations on the data. I used it to implement a f
 
 This project is still missing documentation.
 
+There is a file describing [the informations about the raw File, which I gained while programming this](https://github.com/Tyde/rust_ltspice_parser/blob/master/LTSpice_RAW_File_Info.md).
+
+This program currently can only decode .AC Simulations without .fastaccess
+
 You can retrieve the results by using the SteppedSimulation struct:
 ```rust
 let results = SteppedSimulation::from_files("Draft2.raw","Draft2.log");
