@@ -42,4 +42,4 @@ values.plot(&freq,&mut fg,&format!("Fitness: {}",bundle[k].1),colors[k]);
 ```
 
 ##License
-This Project uses the MIT Licence
+This Project uses the MIT License
