@@ -41,5 +41,5 @@ let values = results.get_values_for_variable_at(&steps[0],&vars[4]).unwrap();
 values.plot(&freq,&mut fg,&format!("Fitness: {}",bundle[k].1),colors[k]);
 ```
 
-##Licence
+##License
 This Project uses the MIT Licence
