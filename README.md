@@ -20,25 +20,32 @@ The SteppedSimulation struct offers several methods to get informations about th
 
 ###Example
 ```rust
-//Read results
-let results = SteppedSimulation::from_files("Draft2.raw","Draft2.log");
-//Get all Variables that are in the Results of the Simulation
-let vars = results.available_variables();
-//Get all Steps of this simulation
-let steps = results.available_steps();
-//Get a Variable with its results. This will get the frequency, because it is the first variable
-let freq = results.get_values_for_variable_at(&steps[0],&vars[0]).unwrap();
 
-//Find steps, which have a resonance arount a point. This is very rudimentary
-let resonances = results.find_with_resonance_at(&vars[4],955.0);
+use ltspice_parse::SteppedSimulation;
+use ltspice_parse::results::{PeakType,DataType};
 
-//Evaluate a fitness function over all steps. The fitness function is defined in the struct implementation
-// The return value is a Tuple with the fitness value and the VariableResult
-let mut fit = results.calculate_fitnesses(&vars[4]);
-//Get the values of the 4th Variables
-let values = results.get_values_for_variable_at(&steps[0],&vars[4]).unwrap();
-//Plot the values with gnuplot
-values.plot(&freq,&mut fg,&format!("Fitness: {}",bundle[k].1),colors[k]);
+main() {
+	//Read results
+	let results = SteppedSimulation::from_files("Draft2.raw","Draft2.log");
+	//Get all Variables that are in the Results of the Simulation
+	let vars = results.available_variables();
+	//Get all Steps of this simulation
+	let steps = results.available_steps();
+	//Get a Variable with its results. This will get the frequency, because it is the first variable
+	let freq = results.get_values_for_variable_at(&steps[0],&vars[0]).unwrap();
+	let vout = results.get_variable_for_name("V(vout)").unwrap();
+	
+	//Find steps, which have a resonance arount a point. This is very rudimentary
+	let resonances = results.find_with_resonance_at(&vout,955.0);
+	
+	//Evaluate a fitness function over all steps. The fitness function is defined in the struct implementation
+	// The return value is a Tuple with the fitness value and the VariableResult
+	let mut fit = results.calculate_fitnesses(&vars[4]);
+	//Get the values of the 4th Variables
+	let values = results.get_values_for_variable_at(&vout,&vars[4]).unwrap();
+	//Plot the values with gnuplot
+	values.plot(&freq,&mut fg,&format!("Fitness: {}",bundle[k].1),colors[k]);
+}
 ```
 
 ##License
