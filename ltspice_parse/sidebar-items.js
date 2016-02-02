@@ -1,0 +1,1 @@
+initSidebarItems({"mod":[["results","This module contains all Functions to work with a single Step"]],"struct":[["SteppedSimulation","A set of results of one Stepped Simulation read from a File"]]});
