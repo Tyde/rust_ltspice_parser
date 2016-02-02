@@ -10,7 +10,7 @@ use std::str::FromStr;
 ///
 /// # Examples
 ///
-/// ``` 
+/// ```no_run
 /// //Gets the avsolute values in decibel
 /// let decibel_data = result.get_data(&DataType::AbsoluteDecibel);
 /// let starting_freq = decibel_data[0];
@@ -39,7 +39,7 @@ impl<'a> VariableResult<'a> {
 	/// 
 	/// The contents are determined by the `data_type`
 	/// ## Example
-	/// ```
+	/// ```no_run
 	/// let imaginary_values = result.get_data(&DataType::Imaginary);
 	/// ```
     pub fn get_data(&self,data_type:&DataType) -> Vec<f64>{
@@ -87,7 +87,7 @@ impl<'a> VariableResult<'a> {
     /// To find all peaks, call it with None
     ///
     /// ## Example 
-    /// ```
+    /// ```no_run
     ///	let peaks = result.find_peaks(Some(PeakType::Maximum),&DataType::AbsoluteDecibel);
     /// ```
     pub fn find_peaks(&self,peak_type: Option<PeakType>,data_type:&DataType) -> Vec<usize> {
@@ -179,7 +179,7 @@ impl<'a> VariableResult<'a> {
     
     /// Searches the dataset for the first value after the given search frequency. To search for a value near 500 Hz call
     ///
-    /// ```
+    /// ```no_run
     /// let (position_in_dataset, value) = find_value_near_freq(&DataType::AbsoluteDecibel,&frequency_dataset,500.0)
     /// ```
     pub fn find_value_near_freq(&self, data_type:&DataType, frequency: &VariableResult, search_freq:f64) -> (usize,f64) {

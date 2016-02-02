@@ -31,7 +31,7 @@ pub mod results;
 /// A set of results of one Stepped Simulation read from a File
 /// 
 /// # Examples
-/// ```
+/// ```no_run
 /// let mut path = PathBuf::from("./simulations/");
 ///	let model_name = "simulation1";
 ///
