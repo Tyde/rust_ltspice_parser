@@ -33,6 +33,7 @@ main() {
 	let steps = results.available_steps();
 	//Get a Variable with its results. This will get the frequency, because it is the first variable
 	let freq = results.get_values_for_variable_at(&steps[0],&vars[0]).unwrap();
+	//Get the variable struct for the node with the name vout
 	let vout = results.get_variable_for_name("V(vout)").unwrap();
 	
 	//Find steps, which have a resonance arount a point. This is very rudimentary
@@ -40,9 +41,9 @@ main() {
 	
 	//Evaluate a fitness function over all steps. The fitness function is defined in the struct implementation
 	// The return value is a Tuple with the fitness value and the VariableResult
-	let mut fit = results.calculate_fitnesses(&vars[4]);
-	//Get the values of the 4th Variables
-	let values = results.get_values_for_variable_at(&vout,&vars[4]).unwrap();
+	let mut fit = results.calculate_fitnesses(&vout);
+	//Get the values of the vout variable
+	let values = results.get_values_for_variable_at(&vout,&vout).unwrap();
 	//Plot the values with gnuplot
 	values.plot(&freq,&mut fg,&format!("Fitness: {}",bundle[k].1),colors[k]);
 }
