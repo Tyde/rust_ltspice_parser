@@ -18,7 +18,7 @@ As you can see, this parser needs both the *.raw file and the *.log file generat
 
 The SteppedSimulation struct offers several methods to get informations about the simulation.
 
-###Example
+### Example
 ```rust
 
 use ltspice_parse::SteppedSimulation;
